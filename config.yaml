@@ -1,5 +1,5 @@
 # ============================================================
-# AI Quality Platform — Runtime Configuration
+# AI Quality Platform - Runtime Configuration
 # All thresholds live here. Never hardcode in Python or C++.
 # Claude can tune this file without touching source code.
 # ============================================================
@@ -24,7 +24,7 @@ preprocess:
 #   finding at exactly threshold  -> 0.5  (WARN band)
 #   finding at 2x threshold       -> 0.0  (FAIL)
 detectors:
-  roi: null            # [x, y, w, h] in pixels — area of the part to inspect. null = whole frame
+  roi: null            # [x, y, w, h] in pixels - area of the part to inspect. null = whole frame
   surface:
     blur_ksize: 3            # Gaussian blur before analysis (odd number; preprocess already blurs)
     morph_kernel_px: 15      # features smaller than this are defect candidates (top-hat / black-hat)
@@ -47,7 +47,7 @@ detectors:
 
 decision:
   pass_threshold: 0.7    # >= 0.7 = PASS
-  warn_threshold: 0.5    # 0.5–0.69 = WARN
+  warn_threshold: 0.5    # 0.5-0.69 = WARN
   weights:
     surface: 0.5
     color: 0.3

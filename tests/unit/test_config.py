@@ -14,3 +14,10 @@ def test_camera_config_has_required_keys():
 def test_decision_weights_sum_to_one():
     weights = get_config()["decision"]["weights"]
     assert abs(sum(weights.values()) - 1.0) < 0.001
+
+
+def test_config_yaml_is_ascii():
+    """Korean Windows reads files as cp949 by default; keep config.yaml ASCII-only."""
+    from pathlib import Path
+    raw = (Path(__file__).resolve().parents[2] / "config.yaml").read_bytes()
+    assert raw.isascii()
