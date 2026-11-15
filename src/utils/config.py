@@ -12,6 +12,6 @@ def get_config() -> dict:
     global _cfg
     if _cfg is None:
         path = Path(__file__).parent.parent.parent / "config.yaml"
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             _cfg = yaml.safe_load(f)
     return _cfg
