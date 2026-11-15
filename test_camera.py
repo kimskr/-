@@ -10,8 +10,9 @@ Keys in the preview window:
     F  save frame to tests/fixtures/fail/  (defective part — rename afterwards,
        e.g. scratch_01.png, dust_01.png, color_anomaly_01.png)
     D  toggle live detection overlay (runs the real ensemble on each frame)
-    Focus: the number in the top-left is image sharpness. Turn the lens slowly
-           and stop where the number is highest.
+    R  reset the 'best' focus value
+    Focus: the number in the bottom-left is image sharpness. Turn the lens slowly
+           and stop where the number is highest (text turns green near the best).
     Q  quit
 
 Uses camera settings from config.yaml (device, resolution, backend, fourcc).
