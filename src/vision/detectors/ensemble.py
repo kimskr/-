@@ -1,10 +1,15 @@
 """
 ensemble.py — Combines all detector scores into final PASS/FAIL/WARN.
-Owner: CTO
-TODO Week 4: wire up all detectors and apply weighted scoring.
+Owner: DEV1 (per MVP plan; interface reviewed by CTO)
+
+Decision rule:
+  combined = weighted average of detector scores (config: decision.weights)
+  quality  = min(combined, worst single detector score)
+A weighted average alone can never FAIL a part for one clear defect
+(surface score 0.0 with weight 0.5 still averages to 0.5 = WARN), so the
+worst detector caps the result: any detector that fails, fails the part.
 """
 import numpy as np
-from src.vision.detectors.base import DetectionResult
 from src.vision.detectors.surface import SurfaceDetector
 from src.vision.detectors.color import ColorDetector
 from src.vision.detectors.brightness import BrightnessDetector
@@ -45,8 +50,10 @@ class Ensemble:
             all_defects.extend(result.defects)
             total_ms += result.duration_ms
 
-        # Weighted combined score
+        # Weighted combined score, capped by the worst detector
         combined = sum(scores[n] * weights.get(n, 0) for n in scores)
+        if scores:
+            combined = min(combined, min(scores.values()))
 
         if combined >= pass_t:
             verdict = "PASS"

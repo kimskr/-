@@ -1,6 +1,6 @@
 """Unit tests for detector base classes and ensemble."""
 import numpy as np
-from src.vision.detectors.base import DetectionResult, DefectRegion
+from src.vision.detectors.base import DetectionResult
 from src.vision.detectors.ensemble import Ensemble
 
 

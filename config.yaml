@@ -9,21 +9,41 @@ camera:
   width: 1280
   height: 800
   fps: 30
+  backend: auto        # auto | dshow | msmf | v4l2 | avfoundation | any
+  fourcc: MJPG         # MJPG is needed for 1280x800 @ 30fps over USB 2.0; null = driver default
 
+preprocess:
+  denoise: gaussian    # gaussian (fast, ~1ms) | nlmeans (slow, 100ms+) | none
+  gaussian_ksize: 3    # odd number
+
+# NOTE: detector defaults below were set on synthetic images (tests/synthetic_images.py).
+#       Re-tune them on real UC852 fixtures with tools/evaluate_fixtures.py.
+#
+# Score convention for every detector (0.0 = bad, 1.0 = perfect):
+#   no finding                    -> 1.0
+#   finding at exactly threshold  -> 0.5  (WARN band)
+#   finding at 2x threshold       -> 0.0  (FAIL)
 detectors:
+  roi: null            # [x, y, w, h] in pixels — area of the part to inspect. null = whole frame
   surface:
-    canny_low: 50
-    canny_high: 150
+    blur_ksize: 3            # Gaussian blur before analysis (odd number; preprocess already blurs)
+    morph_kernel_px: 15      # features smaller than this are defect candidates (top-hat / black-hat)
+    contrast_threshold: 20   # gray-level difference vs local background to count as a defect
+    canny_low: 30            # 50/150 missed scratches shallower than ~45 gray levels
+    canny_high: 90
+    min_edge_ratio: 0.05     # fraction of a candidate's pixels that must touch a Canny edge
     min_defect_area_px: 8
-    score_threshold: 0.3
+    scratch_aspect_ratio: 3.0  # elongation >= this -> 'scratch', otherwise 'dust'
   color:
-    hsv_lower: [0, 0, 0]
+    hsv_lower: [0, 0, 0]     # HSV range that counts as anomalous (default: dark / uncoated)
     hsv_upper: [180, 50, 80]
-    anomaly_threshold: 0.05
+    anomaly_threshold: 0.05  # fraction of ROI pixels in the range that triggers a finding
+    min_region_area_px: 50
   brightness:
     mean_min: 40
     mean_max: 220
     std_max: 70
+    margin: 20               # gray levels beyond the limit at which score reaches 0.0
 
 decision:
   pass_threshold: 0.7    # >= 0.7 = PASS
