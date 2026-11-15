@@ -12,6 +12,8 @@ Usage:
     python tools/evaluate_fixtures.py
     python tools/evaluate_fixtures.py --warn-as fail     # count WARN as a rejection
     python tools/evaluate_fixtures.py --fixtures other/dir --details
+    python tools/evaluate_fixtures.py --overlays          # save images with red boxes
+                                                          # to tests/fixtures/overlays/
 
 Plan targets: accuracy >= 80% (W3), >= 85% (W8); false positives < 5% (W7);
 full pipeline < 100 ms (W6).
@@ -38,7 +40,25 @@ def load_images(folder: Path):
     return sorted(p for p in folder.iterdir() if p.suffix.lower() in IMAGE_EXT)
 
 
-def evaluate(fixtures: Path, warn_as: str = "pass") -> dict:
+def save_overlay(frame, decision, out: Path, roi=None):
+    """Draw ROI (blue) and every defect box (red) and write the image."""
+    view = frame.copy()
+    if roi:
+        x, y, w, h = (int(v) for v in roi)
+        cv2.rectangle(view, (x, y), (x + w, y + h), (255, 0, 0), 2)
+    for d in decision.all_defects:
+        cv2.rectangle(view, (d.x, d.y), (d.x + d.w, d.y + d.h), (0, 0, 255), 2)
+        cv2.putText(view, d.defect_type, (d.x, max(15, d.y - 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+    cv2.putText(view, f"{decision.result} {decision.confidence:.2f}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out), view)
+
+
+def evaluate(fixtures: Path, warn_as: str = "pass", overlays: Path = None) -> dict:
+    from src.utils.config import get_config
+    roi = get_config()["detectors"].get("roi")
     ensemble = Ensemble()
     rows = []
     for expected in ("pass", "fail"):
@@ -50,6 +70,8 @@ def evaluate(fixtures: Path, warn_as: str = "pass") -> dict:
             t0 = time.perf_counter()
             decision = ensemble.run(preprocess(frame))
             total_ms = (time.perf_counter() - t0) * 1000
+            if overlays is not None:
+                save_overlay(frame, decision, overlays / f"{expected}_{path.stem}.png", roi)
             verdict = decision.result
             rejected = verdict == "FAIL" or (verdict == "WARN" and warn_as == "fail")
             rows.append({
@@ -109,8 +131,13 @@ def main():
     ap.add_argument("--warn-as", choices=("pass", "fail"), default="pass",
                     help="how to count WARN results (default: pass)")
     ap.add_argument("--details", action="store_true", help="list every image, not only errors")
+    ap.add_argument("--overlays", action="store_true",
+                    help="save images with defect boxes to <fixtures>/overlays/")
     args = ap.parse_args()
-    print_report(evaluate(args.fixtures, args.warn_as), args.details)
+    overlays = args.fixtures / "overlays" if args.overlays else None
+    print_report(evaluate(args.fixtures, args.warn_as, overlays), args.details)
+    if overlays:
+        print(f"\nOverlay images saved to {overlays}")
 
 
 if __name__ == "__main__":

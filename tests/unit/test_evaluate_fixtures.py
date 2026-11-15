@@ -44,3 +44,21 @@ def test_report_lists_wrong_files(tmp_path, capsys):
     evaluate_fixtures.print_report(rep, details=False)
     out = capsys.readouterr().out
     assert "missed.png" in out and "❌" in out
+
+
+def test_overlays_written(tmp_path):
+    _write(tmp_path / "fail", "scratch_01.png", s.with_scratch(s.clean_metal()))
+    evaluate_fixtures.evaluate(tmp_path, overlays=tmp_path / "overlays")
+    assert (tmp_path / "overlays" / "fail_scratch_01.png").exists()
+
+
+def test_select_roi_writes_config(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location(
+        "select_roi", Path(__file__).resolve().parents[2] / "tools" / "select_roi.py")
+    select_roi = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(select_roi)
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text("detectors:\n  roi: null            # comment\n  surface:\n", encoding="utf-8")
+    monkeypatch.setattr(select_roi, "CONFIG", cfg)
+    select_roi.write_roi([10, 20, 300, 400])
+    assert "  roi: [10, 20, 300, 400]            # comment" in cfg.read_text(encoding="utf-8")

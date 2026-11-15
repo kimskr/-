@@ -27,3 +27,6 @@ src/dashboard/static/frames/
 .vscode/
 .idea/
 *.swp
+
+# Debug overlays from tools/evaluate_fixtures.py --overlays
+tests/fixtures/overlays/
