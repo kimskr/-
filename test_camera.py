@@ -10,6 +10,8 @@ Keys in the preview window:
     F  save frame to tests/fixtures/fail/  (defective part — rename afterwards,
        e.g. scratch_01.png, dust_01.png, color_anomaly_01.png)
     D  toggle live detection overlay (runs the real ensemble on each frame)
+    Focus: the number in the top-left is image sharpness. Turn the lens slowly
+           and stop where the number is highest.
     Q  quit
 
 Uses camera settings from config.yaml (device, resolution, backend, fourcc).
@@ -36,6 +38,23 @@ def save(frame, label: str) -> Path:
     return path
 
 
+def sharpness(frame) -> float:
+    """Variance of the Laplacian on the center of the frame — higher = sharper."""
+    h, w = frame.shape[:2]
+    center = frame[h // 4:3 * h // 4, w // 4:3 * w // 4]
+    gray = cv2.cvtColor(center, cv2.COLOR_BGR2GRAY)
+    return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+
+def draw_focus(view, frame, best: float) -> float:
+    value = sharpness(frame)
+    best = max(best, value)
+    color = (0, 200, 0) if value >= 0.9 * best else (0, 200, 255)
+    cv2.putText(view, f"Focus {value:.0f} (best {best:.0f})", (10, view.shape[0] - 15),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+    return best
+
+
 def draw_detection(frame, ensemble):
     from src.vision.preprocessor import preprocess
     decision = ensemble.run(preprocess(frame))
@@ -55,8 +74,9 @@ def main():
         if not cam.is_open():
             print("Camera failed to open. Check USB connection and camera.device_id / backend.")
             return
-        print("P=save PASS  F=save FAIL  D=detection overlay  Q=quit")
+        print("P=save PASS  F=save FAIL  D=detection overlay  R=reset focus best  Q=quit")
         ensemble = None
+        best_focus = 0.0
         frames, t0 = 0, time.perf_counter()
         while True:
             frame = cam.grab_frame()
@@ -68,7 +88,8 @@ def main():
                 fps = frames / (time.perf_counter() - t0)
                 print(f"Measured FPS: {fps:.1f} | frame {frame.shape[1]}x{frame.shape[0]}")
 
-            view = draw_detection(frame, ensemble) if ensemble else frame
+            view = draw_detection(frame, ensemble) if ensemble else frame.copy()
+            best_focus = draw_focus(view, frame, best_focus)
             cv2.imshow("Arducam UC852 — P:pass F:fail D:detect Q:quit", view)
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
@@ -77,6 +98,8 @@ def main():
                 save(frame, "pass")
             elif key == ord("f"):
                 save(frame, "fail")
+            elif key == ord("r"):
+                best_focus = 0.0
             elif key == ord("d"):
                 if ensemble is None:
                     from src.vision.detectors.ensemble import Ensemble
